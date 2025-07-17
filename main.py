@@ -780,7 +780,7 @@ def share_on_twitter():
     try:
         current_song = os.path.basename(playlist[current_index])
 
-        tweet_text = f"Listening to {current_song} with the MusiEz App! Check it out on: {hardcoded_github_url} <3"
+        tweet_text = f"Listening to {current_song} with the BabTomaMusic App! Check it out on: {hardcoded_github_url} <3"
         tweet_url = f"https://twitter.com/intent/tweet?text={tweet_text}"
         webbrowser.open(tweet_url)
     except Exception as e:
@@ -910,7 +910,7 @@ def on_search_song_click():
 error(hardcoded_config, "config.py", f"config.py doesnt exists", True)
 error(hardcoded_resizeable, False, f"Wrong Resizeable is on {hardcoded_resizeable} and not on \"True\"", False)
 error(hardcoded_geometry, "800x650", f"Wrong Geometry in {hardcoded_config}", False)
-error(hardcoded_root_title, "MusiEz - @tamino1230", f"Wrong RootTitle in {hardcoded_config}", False)
+error(hardcoded_root_title, "BabTomaMusic - @tamino1230", f"Wrong RootTitle in {hardcoded_config}", False)
 error(hardcoded_icon_path, "icon/babToma.ico", f"Wrong Icon Path in {hardcoded_config}", False)
 error(sjksaahd, "Tamino1230", f"Wrong Owner in config.py File", False)
 error(hardcoded_presence, f" | made by tamino1230 on GitHub <3", f"Wrong hardcoded Presence in {hardcoded_config}", False)
