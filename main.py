@@ -359,7 +359,7 @@ def update_presence(song_name=None, start_time=0, duration=0):
                     details_message = details_message[:max_details_length]
                 elapsed_time = int(time.time()) - start_time
 
-                state_text =  f"on {int(volume*100)}% Volume" + hardcoded_presence + playing_custom_text_behind
+                state_text =  f"on {int(volume*1000)}% Volume" + hardcoded_presence + playing_custom_text_behind
                 state_text = state_text[:max_details_length]
 
                 if elapsed_time < duration:
@@ -553,16 +553,16 @@ def set_volume(val, test=False):
     global last_activity_time
     global max_volume
     last_activity_time = time.time()
-    volume = float(val) / 100
-    if volume > max_volume / 100:  # Adjusted to ensure it respects max_volume
-        volume = max_volume / 100
+    volume = float(val) / 1000
+    if volume > max_volume / 1000:  # Adjusted to ensure it respects max_volume
+        volume = max_volume / 1000
     elif volume < 0:
         volume = 0
     pygame.mixer.music.set_volume(volume)
 
     if test:
         if deactivate_add_remove_volume == False:
-            volume_slider.set(volume * 100) #- i think this is causing the crashes
+            volume_slider.set(volume * 1000) #- i think this is causing the crashes
 
 
 #? toggle repeat mode
@@ -788,7 +788,7 @@ def share_on_twitter():
 
 #? gets the current volume
 def get_current_volume():
-    return pygame.mixer.music.get_volume() * 100
+    return pygame.mixer.music.get_volume() * 1000
 
 #? creating hotkeys
 def create_hotkeys():
