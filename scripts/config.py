@@ -56,7 +56,7 @@ mic = "Mikrofon (USB 2.0 Camera Audio)" #- if you wanna use the soundboard you n
 #! do not change
 #* Hardcoded Stuff
 #? main.py
-hardcoded_config = "config.py" #- Programm will not work if changed
+hardcoded_config = "scripts/config.py" #- Programm will not work if changed
 hardcoded_resizeable = False #- Programm will not work if changed
 hardcoded_geometry = "800x650" #- Programm will not work if changed
 hardcoded_root_title = "BabTomaMusic - @tamino1230" #- Programm will not work if changed
