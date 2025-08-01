@@ -367,7 +367,7 @@ def update_presence(song_name=None, start_time=0, duration=0):
                         print(f"Generated message: {details_message}")
                         if details_message == None:
                             print("Error: details_message is None")
-                        if details_message > 128:
+                        if len(details_message) > 128:
                             print(f"Error: details_message is too long: {len(details_message)} characters: {details_message}")
                     RPC.update(
                         details=details_message,
@@ -1140,3 +1140,4 @@ load_playtimes()
 
 #! Mainloop
 root.mainloop()
+
