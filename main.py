@@ -907,7 +907,7 @@ def on_search_song_click():
 
 #! checking for changes
 #? main.py
-error(hardcoded_config, "config.py", f"config.py doesnt exists", True)
+error(hardcoded_config, "scripts/config.py", f"config.py doesnt exists", True)
 error(hardcoded_resizeable, False, f"Wrong Resizeable is on {hardcoded_resizeable} and not on \"True\"", False)
 error(hardcoded_geometry, "800x650", f"Wrong Geometry in {hardcoded_config}", False)
 error(hardcoded_root_title, "BabTomaMusic - @tamino1230", f"Wrong RootTitle in {hardcoded_config}", False)
@@ -1140,4 +1140,5 @@ load_playtimes()
 
 #! Mainloop
 root.mainloop()
+
 
