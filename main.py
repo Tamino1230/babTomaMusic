@@ -107,6 +107,7 @@ volume_onhotkey = config.volume_onhotkey
 #* Debugging
 current_generated_details = ""
 current_generated_state = ""
+last_rpc_payload = {"details": None, "state": None, "large_image": None}
 
 # var Global Hardcoded Presence
 #? main.py
@@ -220,14 +221,14 @@ def _reset_rpc_backoff():
     rpc_backoff_until = 0.0
 
 
-def _safe_rpc_update(**kwargs):
+def _safe_rpc_update(*, force: bool = False, **kwargs):
     global last_rpc_call_at
     if not rich_presence_enabled:
         return
     if _in_rpc_backoff():
         return
     now = time.time()
-    if now - last_rpc_call_at < MIN_RPC_UPDATE_INTERVAL:
+    if (not force) and (now - last_rpc_call_at < MIN_RPC_UPDATE_INTERVAL):
         return
     try:
         RPC.update(**kwargs)
@@ -262,6 +263,16 @@ def _set_rpc_status(text: str):
             rpc_status_var.set(text)
     except Exception:
         pass
+
+
+def _presence_changed(details: str | None, state: str | None, large_image: str | None) -> bool:
+    """Return True if any part differs from the last sent payload; update cache."""
+    global last_rpc_payload
+    prev = last_rpc_payload
+    changed = (details != prev["details"]) or (state != prev["state"]) or (large_image != prev["large_image"])
+    if changed:
+        last_rpc_payload = {"details": details, "state": state, "large_image": large_image}
+    return changed
 
 
 #! saves
@@ -403,7 +414,7 @@ def track_playtime():
 
 #? updates your discord rich presence
 def update_presence(song_name=None, start_time=0, duration=0):
-    global last_activity_time, current_generated_message, current_generated_state
+    global last_activity_time, current_generated_details, current_generated_state
     if rich_presence_enabled:
         try:
             if song_name and is_playing:
@@ -440,6 +451,7 @@ def update_presence(song_name=None, start_time=0, duration=0):
                 state_text = state_text[:max_details_length]
 
                 current_generated_state = state_text
+                current_generated_details = details_message
 
                 if elapsed_time < duration:
                     if error_message == True:
@@ -449,16 +461,20 @@ def update_presence(song_name=None, start_time=0, duration=0):
                             print("Error: details_message is None")
                         if len(details_message) > 128:
                             print(f"Error: details_message is too long: {len(details_message)} characters: {details_message}")
-                    _safe_rpc_update(
-                        details=details_message,
-                        state=state_text,
-                        # start=start_time,
-                        # end=start_time + duration,
-                        large_image="play.png",
-                        large_text="babTomaMusic - tamino1230"
-                    )
+                    if _presence_changed(details_message, state_text, "play.png"):
+                        _safe_rpc_update(
+                            force=True,
+                            details=details_message,
+                            state=state_text,
+                            # start=start_time,
+                            # end=start_time + duration,
+                            large_image="play.png",
+                            large_text="babTomaMusic - tamino1230"
+                        )
                 else:
                     _safe_rpc_clear()
+                    # reset presence cache so next update can send again
+                    _presence_changed(None, None, None)
             elif song_name and not is_playing:
                 # paused
                 if not only_custom_rpc:
@@ -467,26 +483,31 @@ def update_presence(song_name=None, start_time=0, duration=0):
                     details_message = f"{custom_rpc_text}{hardcoded_presence}"
 
                 #* for debugchecking
-                current_generated_message = details_message
+                current_generated_details = details_message
 
                 if error_message == True:
                     print(f"Generated message: {details_message}")
-                _safe_rpc_update(
-                    details=details_message,
-                    large_image="paused.png",
-                    large_text="babTomaMusic - tamino1230"
-                )
+                if _presence_changed(details_message, None, "paused.png"):
+                    _safe_rpc_update(
+                        force=True,
+                        details=details_message,
+                        large_image="paused.png",
+                        large_text="babTomaMusic - tamino1230"
+                    )
             elif (time.time() - last_activity_time) >= 900:
                 details_message = f"{idle_presence} {idle_custom_text_behind}"
                 if error_message == True:
                     print(f"Generated message: {details_message}")
-                _safe_rpc_update(
-                    # idling
-                    details=details_message,
-                    state=f"on {max(0, min(100, int((volume if isinstance(volume, (int, float)) else 0.5) * 100)))}% Volume" + hardcoded_presence + idle_custom_text_behind,
-                    large_image="musi_ez_large_image",
-                    large_text="babTomaMusic - tamino1230"
-                )
+                idle_state = f"on {max(0, min(100, int((volume if isinstance(volume, (int, float)) else 0.5) * 100)))}% Volume" + hardcoded_presence + idle_custom_text_behind
+                if _presence_changed(details_message, idle_state, "musi_ez_large_image"):
+                    _safe_rpc_update(
+                        force=True,
+                        # idling
+                        details=details_message,
+                        state=idle_state,
+                        large_image="musi_ez_large_image",
+                        large_text="babTomaMusic - tamino1230"
+                    )
             else:
                 _safe_rpc_clear()
                 if error_message:
