@@ -51,6 +51,8 @@ max_volume = config.max_volume
 record_actions = config.record_actions
 error_message = config.error_message
 cancel_flag = False
+volume = 0.5  # safe default volume so RPC/state text and mixer volume have a value
+rpc_status_var = None  # will be created only in debug (error_message)
 
 
 # var Sleep Timer
@@ -102,6 +104,9 @@ deactivate_add_remove_volume = config.deactivate_add_remove_volume
 
 volume_onhotkey = config.volume_onhotkey
 
+#* Debugging
+current_generated_details = ""
+current_generated_state = ""
 
 # var Global Hardcoded Presence
 #? main.py
@@ -189,6 +194,76 @@ except Exception as e:
         pass
 
 
+# RPC resiliency: throttle and backoff to keep the app smooth on poor connections
+rpc_fail_count = 0
+rpc_backoff_until = 0.0
+last_rpc_call_at = 0.0
+MIN_RPC_UPDATE_INTERVAL = 10  # seconds; avoid spamming Discord RPC
+
+
+def _in_rpc_backoff():
+    return time.time() < rpc_backoff_until
+
+
+def _schedule_rpc_backoff():
+    global rpc_fail_count, rpc_backoff_until
+    rpc_fail_count = min(rpc_fail_count + 1, 8) # cap exponential growth
+    delay = min(300, 2 ** rpc_fail_count) # up to 5 minutes
+    rpc_backoff_until = time.time() + delay
+    if error_message:
+        print(f"RPC backoff for {int(delay)}s due to connection issue.")
+
+
+def _reset_rpc_backoff():
+    global rpc_fail_count, rpc_backoff_until
+    rpc_fail_count = 0
+    rpc_backoff_until = 0.0
+
+
+def _safe_rpc_update(**kwargs):
+    global last_rpc_call_at
+    if not rich_presence_enabled:
+        return
+    if _in_rpc_backoff():
+        return
+    now = time.time()
+    if now - last_rpc_call_at < MIN_RPC_UPDATE_INTERVAL:
+        return
+    try:
+        RPC.update(**kwargs)
+        last_rpc_call_at = now
+        _reset_rpc_backoff()
+        _set_rpc_status("RPC: OK")
+    except Exception as e:
+        # Any pipe/timeout/connection related issue triggers backoff
+        _schedule_rpc_backoff()
+        if error_message:
+            print(f"RPC update skipped: {e}")
+        _set_rpc_status("RPC: error, backing off…")
+
+
+def _safe_rpc_clear():
+    if _in_rpc_backoff():
+        return
+    try:
+        RPC.clear()
+        _set_rpc_status("RPC: cleared")
+    except Exception as e:
+        _schedule_rpc_backoff()
+        if error_message:
+            print(f"RPC clear skipped: {e}")
+        _set_rpc_status("RPC: error on clear, backing off…")
+
+
+def _set_rpc_status(text: str):
+    # Update small debug label when available
+    try:
+        if error_message and rpc_status_var is not None:
+            rpc_status_var.set(text)
+    except Exception:
+        pass
+
+
 #! saves
 song_playtimes = defaultdict(int)
 
@@ -203,7 +278,7 @@ if record_actions == True: #- if on false it will not record any actions of what
             with open("song_playtimes.json", "r") as f:
                 try:
                     content = f.read().strip()
-                    if content:  # Check if the file is not empty
+                    if content: # Check if the file is not empty
                         song_playtimes = defaultdict(int, json.loads(content))
                     else:
                         song_playtimes = defaultdict(int)  # Initialize as empty
@@ -328,7 +403,7 @@ def track_playtime():
 
 #? updates your discord rich presence
 def update_presence(song_name=None, start_time=0, duration=0):
-    global last_activity_time
+    global last_activity_time, current_generated_message, current_generated_state
     if rich_presence_enabled:
         try:
             if song_name and is_playing:
@@ -359,17 +434,22 @@ def update_presence(song_name=None, start_time=0, duration=0):
                     details_message = details_message[:max_details_length]
                 elapsed_time = int(time.time()) - start_time
 
-                state_text =  f"on {int(volume*1000)}% Volume" + hardcoded_presence + playing_custom_text_behind
+                # ensure volume safe and state length
+                vol_pct = max(0, min(int(max_volume), int((volume if isinstance(volume, (int, float)) else 0.5) * 1000)))
+                state_text = f"on {vol_pct}% Volume {hardcoded_presence}{playing_custom_text_behind}"
                 state_text = state_text[:max_details_length]
+
+                current_generated_state = state_text
 
                 if elapsed_time < duration:
                     if error_message == True:
-                        print(f"Generated message: {details_message}")
-                        if details_message == None:
+                    
+                        print(f"Generated message: {details_message} {state_text}")
+                        if details_message is None:
                             print("Error: details_message is None")
                         if len(details_message) > 128:
                             print(f"Error: details_message is too long: {len(details_message)} characters: {details_message}")
-                    RPC.update(
+                    _safe_rpc_update(
                         details=details_message,
                         state=state_text,
                         # start=start_time,
@@ -378,16 +458,20 @@ def update_presence(song_name=None, start_time=0, duration=0):
                         large_text="babTomaMusic - tamino1230"
                     )
                 else:
-                    RPC.clear()
+                    _safe_rpc_clear()
             elif song_name and not is_playing:
                 # paused
                 if not only_custom_rpc:
                     details_message = f"{paused_presence}{song_name[:64]}{hardcoded_presence}{paused_custom_text_behind}"
                 else:
                     details_message = f"{custom_rpc_text}{hardcoded_presence}"
+
+                #* for debugchecking
+                current_generated_message = details_message
+
                 if error_message == True:
                     print(f"Generated message: {details_message}")
-                RPC.update(
+                _safe_rpc_update(
                     details=details_message,
                     large_image="paused.png",
                     large_text="babTomaMusic - tamino1230"
@@ -396,24 +480,23 @@ def update_presence(song_name=None, start_time=0, duration=0):
                 details_message = f"{idle_presence} {idle_custom_text_behind}"
                 if error_message == True:
                     print(f"Generated message: {details_message}")
-                RPC.update(
+                _safe_rpc_update(
                     # idling
                     details=details_message,
-                    state=f"on {int(volume*100)}% Volume" + hardcoded_presence + idle_custom_text_behind,
+                    state=f"on {max(0, min(100, int((volume if isinstance(volume, (int, float)) else 0.5) * 100)))}% Volume" + hardcoded_presence + idle_custom_text_behind,
                     large_image="musi_ez_large_image",
                     large_text="babTomaMusic - tamino1230"
                 )
             else:
-                RPC.clear()
+                _safe_rpc_clear()
                 if error_message:
                     print("rpc cleared")
         except Exception as e:
+            # Swallow errors to keep UI responsive; backoff handled by safe helpers
             if error_message:
                 print(f"RPC Error: {e}")
-            else:
-                print("An error occurred while updating the RPC.")
     else:
-        RPC.clear()
+        _safe_rpc_clear()
         if error_message:
             print("rpc cleared")
 
@@ -562,7 +645,7 @@ def set_volume(val, test=False):
 
     if test:
         if deactivate_add_remove_volume == False:
-            volume_slider.set(volume * 1000) #- i think this is causing the crashes
+            volume_slider.set(volume * 100) #- i think this is causing the crashes
 
 
 #? toggle repeat mode
@@ -595,7 +678,7 @@ def toggle_rich_presence():
     rich_presence_enabled = not rich_presence_enabled
     rich_presence_button.config(text="Rich Presence: ON" if rich_presence_enabled else "Rich Presence: OFF")
     if not rich_presence_enabled:
-        RPC.clear()
+        _safe_rpc_clear()
 
 
 #? plays the next song in list
@@ -780,7 +863,7 @@ def share_on_twitter():
     try:
         current_song = os.path.basename(playlist[current_index])
 
-        tweet_text = f"Listening to {current_song} with the BabTomaMusic App! Check it out on: {hardcoded_github_url} <3"
+        tweet_text = f"Listening to {current_song} with the MusiEz App! Check it out on: {hardcoded_github_url} <3"
         tweet_url = f"https://twitter.com/intent/tweet?text={tweet_text}"
         webbrowser.open(tweet_url)
     except Exception as e:
@@ -788,7 +871,7 @@ def share_on_twitter():
 
 #? gets the current volume
 def get_current_volume():
-    return pygame.mixer.music.get_volume() * 1000
+    return pygame.mixer.music.get_volume() * 100
 
 #? creating hotkeys
 def create_hotkeys():
@@ -910,7 +993,7 @@ def on_search_song_click():
 error(hardcoded_config, "scripts/config.py", f"config.py doesnt exists", True)
 error(hardcoded_resizeable, False, f"Wrong Resizeable is on {hardcoded_resizeable} and not on \"True\"", False)
 error(hardcoded_geometry, "800x650", f"Wrong Geometry in {hardcoded_config}", False)
-error(hardcoded_root_title, "BabTomaMusic - @tamino1230", f"Wrong RootTitle in {hardcoded_config}", False)
+error(hardcoded_root_title, "MusiEz - @tamino1230", f"Wrong RootTitle in {hardcoded_config}", False)
 error(hardcoded_icon_path, "icon/babToma.ico", f"Wrong Icon Path in {hardcoded_config}", False)
 error(sjksaahd, "Tamino1230", f"Wrong Owner in config.py File", False)
 error(hardcoded_presence, f" | made by tamino1230 on GitHub <3", f"Wrong hardcoded Presence in {hardcoded_config}", False)
@@ -976,6 +1059,12 @@ button_frame.pack(anchor="nw", pady=10)
 #! RPC toggle button
 rich_presence_button = tk.Button(button_frame, text=f"Rich Presence: {at_start_rich_button}", command=toggle_rich_presence)
 rich_presence_button.pack(side=tk.LEFT, padx=5)
+
+# Debug-only: show a small RPC status indicator
+if error_message:
+    rpc_status_var = tk.StringVar(value="RPC: ready")
+    rpc_status_label = tk.Label(button_frame, textvariable=rpc_status_var, fg="#888")
+    rpc_status_label.pack(side=tk.LEFT, padx=8)
 
 #. RPC reconnect button
 #// reconnect_button = tk.Button(button_frame, text="Reconnect", command=reconnect_rpc)
@@ -1140,5 +1229,3 @@ load_playtimes()
 
 #! Mainloop
 root.mainloop()
-
-
