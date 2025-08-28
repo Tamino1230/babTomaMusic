@@ -20,13 +20,14 @@ error_message = False #- Debugging tool./ Info tool
 #* Discord RPC Settings
 default_discord_rich_presence = True #- default True
 show_repeat_shuffle = True #- If False it will not show (Repeat & Shuffle) on Discord
+use_old_rpc_settings = False #- If True it will use the old RPC settings (not recommended)
 
 
 #* Audio Settings
 max_volume = 500 #- needs to be under 500 and over 0
 
 sleeplength = 1 #- After how many minutes the program will end itself 
-time_format = "hour" #- Avaible time formats: s; m; h; second; minute; hour;
+time_format = "h" #- Avaible time formats: s; m; h; second; minute; hour;
 sleeptimer = True #- Music Automaticly Stops after how many minutes you put on sleeplength
 
 
@@ -56,10 +57,10 @@ mic = "Mikrofon (USB 2.0 Camera Audio)" #- if you wanna use the soundboard you n
 #! do not change
 #* Hardcoded Stuff
 #? main.py
-hardcoded_config = "config.py" #- Programm will not work if changed
+hardcoded_config = "scripts/config.py" #- Programm will not work if changed
 hardcoded_resizeable = False #- Programm will not work if changed
 hardcoded_geometry = "800x650" #- Programm will not work if changed
-hardcoded_root_title = "MusiEz - @tamino1230" #- Programm will not work if changed
+hardcoded_root_title = "BabTomaMusic - @tamino1230" #- Programm will not work if changed
 hardcoded_presence = " | made by tamino1230 on GitHub <3" #- Programm will not work if changed
 hardcoded_client_id = '1309941984407977996' #- Programm will not work if changed
 hardcoded_icon_path = "icon/babToma.ico" #- Programm will not work if changed

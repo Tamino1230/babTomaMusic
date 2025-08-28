@@ -4,3 +4,4 @@ pypresence
 pygame
 keyboard
 requests
+Pillow
