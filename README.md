@@ -4,7 +4,7 @@ Please use the [latest Version](https://github.com/Tamino1230/babTomaMusic/relea
 
 babTomaMusic is a Python-based desktop music application created by **Tamino1230**. It provides an easy-to-use interface for managing playlists, downloading songs, and integrating with Discord Rich Presence. The application also includes features like hotkeys, sleep timers, and song information retrieval.
 
----
+## [Whats New](#whats-new-recent-updates) <--- Press here
 
 ## Table of Contents
 
@@ -17,6 +17,7 @@ babTomaMusic is a Python-based desktop music application created by **Tamino1230
 7. [Known Issues](#known-issues)
 8. [License](#license)
 9. [Contact](#contact)
+10. [Whats New](#whats-new-recent-updates)
 
 ---
 
@@ -153,3 +154,41 @@ For questions, feedback, or support, contact **Tamino1230**:
 ## Project Repository
 
 Find the source code and updates at: [https://github.com/Tamino1230/babTomaMusic](https://github.com/Tamino1230/babTomaMusic)
+
+---
+
+## What's New (recent updates)
+
+These are the main features and UI improvements added recently:
+
+- Virtual Playlists
+  - Virtual playlists are stored as JSON files in the `_virtual_playlists` folder. Each JSON contains playlist metadata (name, thumbnail, items).
+  - You can create, load, save, rename and delete virtual playlists. Missing files inside a virtual playlist are skipped when loading.
+  - Thumbnails for virtual playlists are supported: choose or create a thumbnail and it will be copied into the `_virtual_playlists` folder.
+
+- Right-click and Context Actions
+  - Right-click songs in the main list to "Add to Virtual Playlist" and choose an existing virtual playlist or create a new one.
+  - When a virtual playlist is loaded, you can right-click items to "Remove from virtual playlist" (edits the JSON and updates the UI).
+
+- Manage Virtual Playlists dialog
+  - A dedicated manager (non-resizable) lets you browse virtual playlists, add/remove/rename items, set a thumbnail, and save changes.
+  - The manager shows a single thumbnail for the currently-selected virtual playlist placed directly under the control buttons.
+  - Rename flow includes an option to rename the underlying JSON file as well.
+
+- Main UI improvements
+  - Top-right search box: search the main song list, select and scroll to the first match.
+  - Multi-selection enabled for the main song list (select multiple tracks). Double-click plays the item under the cursor.
+  - Shuffle toggling now preserves the currently-playing file so your playback doesn't jump unexpectedly when switching shuffle on/off.
+
+- Discord Rich Presence
+  - When a virtual playlist is loaded the Discord status includes the playlist name (shown as "Playlist: {name} (virtual playlist) // Volume: xx%"), and normal folder loads clear the virtual playlist context.
+
+- Playback and reliability
+  - The Pause/Unpause UI now reliably reflects playback state via an `update_pause_button()` helper so the button text matches whether audio is playing or paused.
+  - Playtime tracking and JSON writes (playtimes and virtual-playlist files) use safe saving to reduce corruption risk.
+
+- Misc
+  - Thumbnails support via Pillow (see `requirements.txt`).
+  - Various bug fixes and polish: UI ordering fixes, defensive guards around playlist indices, improved error resilience.
+
+If you'd like this written into a formal changelog file (CHANGELOG.md) or want to highlight any single change with screenshots, tell me which items to expand.
