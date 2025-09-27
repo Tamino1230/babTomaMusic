@@ -428,7 +428,7 @@ def download_and_process_mp3(url):
             'preferredcodec': 'mp3',
             'preferredquality': '320',
         }],
-        'ffmpeg_location': 'ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe'
+        'ffmpeg_location': 'ffmpeg-8.0-essentials_build/bin/ffmpeg.exe'
     }
     try:
         with YoutubeDL(ydl_opts) as ydl:
@@ -2286,3 +2286,4 @@ load_playtimes()
 
 #! Mainloop
 root.mainloop()
+
