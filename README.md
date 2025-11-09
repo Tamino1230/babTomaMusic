@@ -161,6 +161,9 @@ Find the source code and updates at: [https://github.com/Tamino1230/babTomaMusic
 
 These are the main features and UI improvements added recently:
 
+- Songplaytimes
+  - Fixed Song playtimes.
+
 - Virtual Playlists
   - Virtual playlists are stored as JSON files in the `_virtual_playlists` folder. Each JSON contains playlist metadata (name, thumbnail, items).
   - You can create, load, save, rename and delete virtual playlists. Missing files inside a virtual playlist are skipped when loading.
@@ -190,5 +193,3 @@ These are the main features and UI improvements added recently:
 - Misc
   - Thumbnails support via Pillow (see `requirements.txt`).
   - Various bug fixes and polish: UI ordering fixes, defensive guards around playlist indices, improved error resilience.
-
-If you'd like this written into a formal changelog file (CHANGELOG.md) or want to highlight any single change with screenshots, tell me which items to expand.
