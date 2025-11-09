@@ -13,7 +13,7 @@ record_actions = True #- If you want to record all your actions / False = no / T
 
 
 #* Debug Settings
-error_message = True #- Debugging tool./ Info tool
+error_message = False #- Debugging tool./ Info tool
 #! Put on True if you programm is not starting/crashing or when problems appear (most errors in console can be ignored)
 
 
