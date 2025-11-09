@@ -1,10 +1,10 @@
 
 #* Programmer
 by = "Tamino1230" #- maker of this program / Programm will not work if changed
-
+# custom_discord_user_id = "702893526303637604"
 
 #* Quality of Life
-bgcolor = "light blue" #- background-color | #F791C1 is a hex color
+bgcolor = "purple" #- background-color | #F791C1 is a hex color
 default_folder = "downloaded_music" #- where the downloaded files are getting added to. (which folder)
 
 
@@ -13,7 +13,7 @@ record_actions = True #- If you want to record all your actions / False = no / T
 
 
 #* Debug Settings
-error_message = False #- Debugging tool./ Info tool
+error_message = True #- Debugging tool./ Info tool
 #! Put on True if you programm is not starting/crashing or when problems appear (most errors in console can be ignored)
 
 

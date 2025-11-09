@@ -28,6 +28,7 @@ import tkinter as tk
 import threading
 import keyboard
 import shutil
+import platform
 
 
 # import files
@@ -291,8 +292,11 @@ def _presence_changed(details: str | None, state: str | None, large_image: str |
 #! saves
 song_playtimes = defaultdict(int)
 
-# file used to store playtimes (absolute path)
-song_playtimes_file = os.path.abspath("song_playtimes.json")
+# file used to store playtimes (absolute path).
+# Use the script directory so the file is colocated with the app and
+# not dependent on the current working directory.
+script_dir = os.path.dirname(os.path.abspath(__file__))
+song_playtimes_file = os.path.join(script_dir, "song_playtimes.json")
 
 # runtime tracking helpers
 last_tick_time = None # timestamp of the last tracker tick
@@ -318,7 +322,23 @@ def _atomic_write(path: str, data: dict):
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        os.replace(tmp, path)
+        try:
+            # Prefer atomic replace
+            os.replace(tmp, path)
+        except Exception:
+            # On some Windows setups os.replace can fail if the target is locked.
+            # Fall back to writing directly to the target and clean up tmp.
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+            except Exception as e:
+                if error_message:
+                    print(f"Fallback write failed for playtimes: {e}")
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except Exception:
+                pass
     except Exception as e:
         if error_message:
             print(f"Error saving playtimes: {e}")
@@ -417,6 +437,73 @@ def download_youtube_mp3():
     if url:
         threading.Thread(target=download_and_process_mp3, args=(url,)).start()
 
+def find_ffmpeg_executable(search_roots: list[str] | None = None, max_checks: int = 2000) -> str | None:
+    """
+    Search common locations for an ffmpeg executable or a folder name containing "ffmpeg"
+    and return the full path to the executable (e.g. ".../ffmpeg-8.0-essentials_build/bin/ffmpeg.exe")
+    or None if not found.
+    This function is intentionally conservative to avoid walking entire drives blindly.
+    """
+    exe_names = ['ffmpeg.exe'] if os.name == 'nt' else ['ffmpeg']
+    checked = 0
+
+    # build a reasonable list of roots to scan
+    if search_roots is None:
+        search_roots = []
+        # script_dir is defined earlier in the file; fall back to cwd if not
+        try:
+            search_roots.append(script_dir)
+        except Exception:
+            search_roots.append(os.getcwd())
+        search_roots.extend(x for x in os.environ.get('PATH', '').split(os.pathsep) if x)
+        # common install locations
+        if os.name == 'nt':
+            search_roots += [r"C:\ffmpeg", r"C:\Program Files\ffmpeg", r"C:\Program Files (x86)\ffmpeg"]
+        else:
+            search_roots += ["/usr/bin", "/usr/local/bin", "/opt"]
+
+    seen = set()
+    for root_start in search_roots:
+        if not root_start:
+            continue
+        root_start = os.path.abspath(root_start)
+        if root_start in seen:
+            continue
+        seen.add(root_start)
+        # walk but limit checks to avoid long scanning
+        for root, dirs, files in os.walk(root_start):
+            checked += 1
+            # quick heuristic: if the folder name contains "ffmpeg" it's a strong candidate
+            lowname = os.path.basename(root).lower()
+            if "ffmpeg" in lowname:
+                # check typical bin path first
+                for exe in exe_names:
+                    candidate = os.path.join(root, "bin", exe)
+                    if os.path.isfile(candidate):
+                        return os.path.abspath(candidate)
+                # fallback: check for executable file directly inside the folder
+                for exe in exe_names:
+                    candidate = os.path.join(root, exe)
+                    if os.path.isfile(candidate):
+                        return os.path.abspath(candidate)
+            # also check files list for ffmpeg executable
+            for exe in exe_names:
+                if exe in files:
+                    return os.path.abspath(os.path.join(root, exe))
+            if checked >= max_checks:
+                # stop scanning to keep startup snappy
+                return None
+    return None
+
+
+# determine ffmpeg location once at startup so other code can reuse it
+FFMPEG_EXECUTABLE = find_ffmpeg_executable()
+if FFMPEG_EXECUTABLE:
+    if error_message:
+        print(f"Found ffmpeg executable: {FFMPEG_EXECUTABLE}")
+else:
+    if error_message:
+        print("ffmpeg executable not found automatically; falling back to bundled path or system ffmpeg.")
 
 #? hiding process
 def download_and_process_mp3(url):
@@ -428,7 +515,7 @@ def download_and_process_mp3(url):
             'preferredcodec': 'mp3',
             'preferredquality': '320',
         }],
-        'ffmpeg_location': 'ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe'
+        'ffmpeg_location': FFMPEG_EXECUTABLE if FFMPEG_EXECUTABLE else None,
     }
     try:
         with YoutubeDL(ydl_opts) as ydl:
